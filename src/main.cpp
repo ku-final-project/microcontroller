@@ -15,22 +15,12 @@ int state = 0;
 // #define REED 21
 // #define LED 2
 
-COROUTINE(led)
+COROUTINE(serial)
 {
   COROUTINE_LOOP()
   {
-    if (Serial.available())
-    {
-      String serial_send = Serial.readString();
-      if (serial_send == "led_on")
-      {
-        digitalWrite(LED, 1);
-      }
-      else if (serial_send == "led_off")
-      {
-        digitalWrite(LED, 0);
-      }
-    }
+    Serial.println("Simulate Analog Read");
+    COROUTINE_DELAY_SECONDS(2);
   }
 }
 
@@ -50,6 +40,7 @@ void setup()
 
 void loop()
 {
+  serial.runCoroutine();
   debouncer.update();
   if (Serial.available())
   {
