@@ -39,27 +39,39 @@ Bounce debouncer = Bounce();
 void setup()
 {
   Serial.begin(115200);
-  pinMode(BUTTON, INPUT);
   pinMode(REED, INPUT_PULLUP);
   pinMode(RELAY, OUTPUT);
   pinMode(LED, OUTPUT);
-  // pinMode(BUTTON, INPUT_PULLUP);
   digitalWrite(RELAY, 1);
   debouncer.attach(BUTTON, INPUT_PULLUP);
   debouncer.interval(25);
   digitalWrite(LED, 0);
-  CoroutineScheduler::setup();
 }
 
 void loop()
 {
-  led.runCoroutine();
-  CoroutineScheduler::loop();
-
   debouncer.update();
-  if (state == 0 && ((Serial.available() && Serial.readString() == "unlock") || debouncer.fell()))
+  if (Serial.available())
   {
-    String x = Serial.readString();
+    String serial_send = Serial.readString();
+    if (state == 0 && serial_send == "unlock")
+    {
+      Serial.println("Begin Unlock...");
+      digitalWrite(RELAY, 0);
+      delay(100);
+      state = 1;
+    }
+    if (serial_send == "led_on")
+    {
+      digitalWrite(LED, 1);
+    }
+    else if (serial_send == "led_off")
+    {
+      digitalWrite(LED, 0);
+    }
+  }
+  else if (debouncer.fell())
+  {
     Serial.println("Begin Unlock...");
     digitalWrite(RELAY, 0);
     delay(100);
