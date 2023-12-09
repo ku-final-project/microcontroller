@@ -1,83 +1,63 @@
 #include <Arduino.h>
-#include <AceRoutine.h>
-#include <Bounce2.h>
-using namespace ace_routine;
+#include <Adafruit_NeoPixel.h>
+#include <ESPAsyncWebServer.h>
 
-int state = 0;
+#define LED_PIN 23
+#define LED_COUNT 12
 
-#define RELAY 15
-#define BUTTON 10
-#define REED 4
-#define LED 2
-// for esp32
-// #define RELAY 23
-// #define BUTTON 22
-// #define REED 21
-// #define LED 2
+const char *ssid = "A702";
+const char *password = "420199355";
+Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB);
+AsyncWebServer server(80);
 
-COROUTINE(serial)
+void turnLedOn(Adafruit_NeoPixel ring)
 {
-  COROUTINE_LOOP()
+  for (int i = 0; i < ring.numPixels(); i++)
   {
-    Serial.println("Simulate Analog Read");
-    COROUTINE_DELAY_SECONDS(2);
+    ring.setPixelColor(i, ring.Color(255, 255, 255));
   }
+  ring.show();
 }
 
-Bounce debouncer = Bounce();
+void turnLedOff(Adafruit_NeoPixel ring)
+{
+  for (int i = 0; i < ring.numPixels(); i++)
+  {
+    ring.setPixelColor(i, ring.Color(0, 0, 0, 0));
+  }
+  ring.show();
+}
+
+void notFound(AsyncWebServerRequest *request) {
+    request->send(404, "text/plain", "Not found");
+}
+
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(REED, INPUT_PULLUP);
-  pinMode(RELAY, OUTPUT);
-  pinMode(LED, OUTPUT);
-  digitalWrite(RELAY, 1);
-  debouncer.attach(BUTTON, INPUT_PULLUP);
-  debouncer.interval(25);
-  digitalWrite(LED, 0);
+  ring.begin();
+  ring.setBrightness(10);
+  WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_STA);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println("Connecting....");
+  }
+  Serial.println(WiFi.localIP());
+  server.on("/ledon", HTTP_GET, [](AsyncWebServerRequest *request){ 
+    turnLedOn(ring);
+    request->send(200, "text/plain", "Led on"); 
+  });
+  server.on("/ledoff", HTTP_GET, [](AsyncWebServerRequest *request){ 
+    turnLedOff(ring);
+    request->send(200, "text/plain", "Led off"); 
+  });
+  server.onNotFound(notFound);
+  server.begin();
 }
 
 void loop()
 {
-  serial.runCoroutine();
-  debouncer.update();
-  if (Serial.available())
-  {
-    String serial_send = Serial.readString();
-    if (state == 0 && serial_send == "unlock")
-    {
-      Serial.println("Begin Unlock...");
-      digitalWrite(RELAY, 0);
-      delay(100);
-      state = 1;
-    }
-    if (serial_send == "led_on")
-    {
-      digitalWrite(LED, 1);
-    }
-    else if (serial_send == "led_off")
-    {
-      digitalWrite(LED, 0);
-    }
-  }
-  else if (debouncer.fell())
-  {
-    Serial.println("Begin Unlock...");
-    digitalWrite(RELAY, 0);
-    delay(100);
-    state = 1;
-  }
-  else if (state == 1)
-  {
-    if (!digitalRead(REED))
-    {
-      Serial.println("LOCKING");
-      digitalWrite(RELAY, 1);
-      state = 0;
-      Serial.println("LOCKING finish");
-      Serial.flush();
-      delay(100);
-    }
-  }
 }
