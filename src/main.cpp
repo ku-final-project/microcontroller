@@ -1,71 +1,23 @@
+#include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
-#include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include <ArduinoJson.h>
 #include "SPIFFS.h"
+#include "led.h"
+#include "config.h"
 
 #define LED_PIN 23
 #define LED_COUNT 12
 
-struct Config {
-  String ssid;
-  String password;
-};
 
 Config config;
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB);
 AsyncWebServer server(80);
 
-void turnLedOn(Adafruit_NeoPixel ring)
-{
-  for (int i = 0; i < ring.numPixels(); i++)
-  {
-    ring.setPixelColor(i, ring.Color(255, 255, 255));
-  }
-  ring.show();
-}
-
-void turnLedOff(Adafruit_NeoPixel ring)
-{
-  for (int i = 0; i < ring.numPixels(); i++)
-  {
-    ring.setPixelColor(i, ring.Color(0, 0, 0, 0));
-  }
-  ring.show();
-}
 
 void notFound(AsyncWebServerRequest *request) {
-    request->send(404, "text/plain", "Not found");
+  request->send(404, "text/plain", "Not found");
 }
-
-void readConfigFromSPIFFS(const char *filename, Config &config){
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    return;
-  }
-
-  File file = SPIFFS.open(filename);
-
-  if (!file) {
-    Serial.println("Failed to open file for reading");
-    return;
-  }
-  String json;
-  while (file.available()) {
-    json = file.readString();
-  }
-  const char* jsonString = json.c_str();
-  DynamicJsonDocument doc(200);
-  deserializeJson(doc, jsonString);
-
-  const char* ssid = doc["ssid"];
-  const char* password = doc["password"];
-  config.ssid = String(ssid);
-  config.password = String(password);
-  file.close();
-}
-
 
 void setup()
 {
