@@ -1,12 +1,13 @@
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include <ESPAsyncWebServer.h>
+#include "SPIFFS.h"
 
 #define LED_PIN 23
 #define LED_COUNT 12
 
-const char *ssid = "A702";
-const char *password = "420199355";
+String ssid,password;
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB);
 AsyncWebServer server(80);
 
@@ -38,7 +39,33 @@ void setup()
   Serial.begin(115200);
   ring.begin();
   ring.setBrightness(10);
-  WiFi.begin(ssid, password);
+  
+  if(!SPIFFS.begin(true)){
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+  File file = SPIFFS.open("/config.txt");
+  if (!file) {
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+
+  int i = 0;
+  while (file.available()) {
+    String s = file.readStringUntil('\n');
+    if(i==0){
+      ssid = s;
+    }
+    else {
+      password = s;
+    }
+    i++;
+  }
+  file.close();
+
+  Serial.printf("\'%s\'\n",ssid.c_str());
+  Serial.printf("\'%s\'",password.c_str());
+  WiFi.begin(ssid.c_str(), password.c_str());
   WiFi.mode(WIFI_STA);
   while (WiFi.status() != WL_CONNECTED)
   {
