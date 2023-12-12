@@ -1,6 +1,6 @@
 #include "led.h"
 
-void turnLedOn(Adafruit_NeoPixel ring)
+void turnLedOn(Adafruit_NeoPixel &ring)
 {
   for (int i = 0; i < ring.numPixels(); i++)
   {
@@ -9,7 +9,7 @@ void turnLedOn(Adafruit_NeoPixel ring)
   ring.show();
 }
 
-void turnLedOff(Adafruit_NeoPixel ring)
+void turnLedOff(Adafruit_NeoPixel &ring)
 {
   for (int i = 0; i < ring.numPixels(); i++)
   {
