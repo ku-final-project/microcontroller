@@ -1,71 +1,78 @@
 #include <Arduino.h>
-#include <AceRoutine.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
+#include <Adafruit_NeoPixel.h>
 #include <Bounce2.h>
-using namespace ace_routine;
+#include "led.h"
+#include "config.h"
+
+#define LED_PIN 23
+#define LED_COUNT 12
+#define RELAY 22 
+#define BUTTON 21
+#define REED 13
 
 int state = 0;
 
-#define RELAY 15
-#define BUTTON 10
-#define REED 4
-#define LED 2
-// for esp32
-// #define RELAY 23
-// #define BUTTON 22
-// #define REED 21
-// #define LED 2
-
-COROUTINE(led)
-{
-  COROUTINE_LOOP()
-  {
-    if (Serial.available())
-    {
-      String serial_send = Serial.readString();
-      if (serial_send == "led_on")
-      {
-        digitalWrite(LED, 1);
-      }
-      else if (serial_send == "led_off")
-      {
-        digitalWrite(LED, 0);
-      }
-    }
-  }
-}
-
+Config config;
+Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB);
+AsyncWebServer server(80);
 Bounce debouncer = Bounce();
+
+
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(BUTTON, INPUT);
   pinMode(REED, INPUT_PULLUP);
   pinMode(RELAY, OUTPUT);
-  pinMode(LED, OUTPUT);
-  // pinMode(BUTTON, INPUT_PULLUP);
   digitalWrite(RELAY, 1);
   debouncer.attach(BUTTON, INPUT_PULLUP);
   debouncer.interval(25);
-  digitalWrite(LED, 0);
-  CoroutineScheduler::setup();
+  const char *filename = "/config.json"; 
+  readConfigFromSPIFFS(filename,config);
+  ring.begin();
+  ring.setBrightness(10);
+  WiFi.begin(config.ssid.c_str(), config.password.c_str());
+  WiFi.mode(WIFI_STA);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println("Connecting....");
+  }
+  Serial.println(WiFi.localIP());
+  server.on("/led-on", HTTP_GET, [](AsyncWebServerRequest *request){ 
+    turnLedOn(ring);
+    request->send(200, "text/plain", "Led on"); 
+  });
+  server.on("/led-off", HTTP_GET, [](AsyncWebServerRequest *request){ 
+    turnLedOff(ring);
+    request->send(200, "text/plain", "Led off"); 
+  });
+  server.on("/open-door", HTTP_GET, [](AsyncWebServerRequest *request){ 
+    digitalWrite(RELAY, 0);
+    delay(100);
+    state = 1;
+    request->send(200, "text/plain", "Open door"); 
+  });
+  server.onNotFound(notFound);
+  server.begin();
 }
 
 void loop()
 {
-  led.runCoroutine();
-  CoroutineScheduler::loop();
-
   debouncer.update();
-  if (state == 0 && ((Serial.available() && Serial.readString() == "unlock") || debouncer.fell()))
+  if (debouncer.fell())
   {
-    String x = Serial.readString();
     Serial.println("Begin Unlock...");
     digitalWrite(RELAY, 0);
     delay(100);
     state = 1;
   }
-  else if (state == 1)
+  if (state == 1)
   {
     if (!digitalRead(REED))
     {
