@@ -22,7 +22,15 @@ void readConfigFromSPIFFS(const char *filename, Config &config){
 
   const char* ssid = doc["ssid"];
   const char* password = doc["password"];
+  const char* local_IP = doc["local_IP"];
+  const char* gateway = doc["gateway"];
+  const char* subnet = doc["subnet"];
+
   config.ssid = String(ssid);
   config.password = String(password);
+  if (config.local_IP.fromString(String(local_IP))) {}
+  if (config.gateway.fromString(String(gateway))) {}
+  if (config.subnet.fromString(String(subnet))) {}
+
   file.close();
 }

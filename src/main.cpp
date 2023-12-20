@@ -19,7 +19,6 @@ Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB);
 AsyncWebServer server(80);
 Bounce debouncer = Bounce();
 
-
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
@@ -36,6 +35,9 @@ void setup()
   readConfigFromSPIFFS(filename,config);
   ring.begin();
   ring.setBrightness(10);
+  if (!WiFi.config(config.local_IP, config.gateway, config.subnet)) {
+    Serial.println("STA Failed to configure");
+  }
   WiFi.begin(config.ssid.c_str(), config.password.c_str());
   WiFi.mode(WIFI_STA);
   while (WiFi.status() != WL_CONNECTED)
