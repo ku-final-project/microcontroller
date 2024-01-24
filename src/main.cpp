@@ -5,6 +5,8 @@
 #include <Bounce2.h>
 #include <Ultrasonic.h>
 #include <AceRoutine.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #include "led.h"
 #include "config.h"
 
@@ -24,7 +26,7 @@ Ultrasonic ultrasonic(15, 2);
 
 COROUTINE(light) {
   COROUTINE_LOOP() {
-    if(ultrasonic.read() < 25){
+    if(ultrasonic.read() < 60){
       turnLedOn(ring);
     }
     else {
@@ -40,6 +42,7 @@ void notFound(AsyncWebServerRequest *request) {
 
 void setup()
 {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable detector
   Serial.begin(115200);
   pinMode(REED, INPUT_PULLUP);
   pinMode(RELAY, OUTPUT);
@@ -49,7 +52,7 @@ void setup()
   const char *filename = "/config.json"; 
   readConfigFromSPIFFS(filename,config);
   ring.begin();
-  ring.setBrightness(10);
+  ring.setBrightness(50);
   if (!WiFi.config(config.local_IP, config.gateway, config.subnet)) {
     Serial.println("STA Failed to configure");
   }
