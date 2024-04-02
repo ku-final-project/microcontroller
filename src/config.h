@@ -8,6 +8,9 @@
 struct Config {
   String ssid;
   String password;
+  IPAddress local_IP;
+  IPAddress gateway;
+  IPAddress subnet;
 };
 
 void readConfigFromSPIFFS(const char *filename, Config &config);

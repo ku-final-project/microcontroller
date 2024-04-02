@@ -3,6 +3,10 @@
 #include <AsyncTCP.h>
 #include <Adafruit_NeoPixel.h>
 #include <Bounce2.h>
+#include <Ultrasonic.h>
+#include <AceRoutine.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #include "led.h"
 #include "config.h"
 
@@ -18,7 +22,19 @@ Config config;
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB);
 AsyncWebServer server(80);
 Bounce debouncer = Bounce();
+Ultrasonic ultrasonic(15, 2);	
 
+COROUTINE(light) {
+  COROUTINE_LOOP() {
+    if(ultrasonic.read() < 60){
+      turnLedOn(ring);
+    }
+    else {
+    turnLedOff(ring);
+    }
+    COROUTINE_DELAY(1000);
+  }
+}
 
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
@@ -26,6 +42,7 @@ void notFound(AsyncWebServerRequest *request) {
 
 void setup()
 {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable detector
   Serial.begin(115200);
   pinMode(REED, INPUT_PULLUP);
   pinMode(RELAY, OUTPUT);
@@ -35,7 +52,10 @@ void setup()
   const char *filename = "/config.json"; 
   readConfigFromSPIFFS(filename,config);
   ring.begin();
-  ring.setBrightness(10);
+  ring.setBrightness(50);
+  if (!WiFi.config(config.local_IP, config.gateway, config.subnet)) {
+    Serial.println("STA Failed to configure");
+  }
   WiFi.begin(config.ssid.c_str(), config.password.c_str());
   WiFi.mode(WIFI_STA);
   while (WiFi.status() != WL_CONNECTED)
@@ -54,7 +74,6 @@ void setup()
   });
   server.on("/open-door", HTTP_GET, [](AsyncWebServerRequest *request){ 
     digitalWrite(RELAY, 0);
-    delay(100);
     state = 1;
     request->send(200, "text/plain", "Open door"); 
   });
@@ -69,11 +88,12 @@ void loop()
   {
     Serial.println("Begin Unlock...");
     digitalWrite(RELAY, 0);
-    delay(100);
+    delay(1000);
     state = 1;
   }
   if (state == 1)
   {
+    delay(500);
     if (!digitalRead(REED))
     {
       Serial.println("LOCKING");
@@ -84,4 +104,5 @@ void loop()
       delay(100);
     }
   }
+  light.runCoroutine();
 }
