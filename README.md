@@ -2,7 +2,7 @@
 
 ## Table Of Contents
 - [Prerequisites](#prerequisites)
-- [How to Setup](#how-to-setupj)
+- [How to Setup](#how-to-setup)
 
 
 ## Prerequisites
